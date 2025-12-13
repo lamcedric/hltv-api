@@ -2,14 +2,19 @@ from dataclasses import dataclass, field
 from typing import Optional
 from xml.etree import ElementTree
 
-import cloudscraper
 from bs4 import BeautifulSoup
 from fastapi import HTTPException
 from lxml import etree
-from requests import Response, TooManyRedirects
 
-from app.utils.utils import trim 
-#from app.utils.xpath import pagination
+from app.utils.utils import trim
+
+# Try curl_cffi first (better Cloudflare bypass), fallback to cloudscraper
+try:
+    from curl_cffi import requests as curl_requests
+    USE_CURL_CFFI = True
+except ImportError:
+    import cloudscraper
+    USE_CURL_CFFI = False
 
 
 @dataclass
@@ -26,13 +31,15 @@ class HLTVBase:
     URL: str = field(init = False)
     response: dict = field(default_factory= lambda: {}, init= False)
     
-    def make_request(self,url: Optional[str] = None) -> Response:
+    def make_request(self, url: Optional[str] = None, max_retries: int = 3):
         """
-        Make an HTTP GET request to the specified URL.
+        Make an HTTP GET request to the specified URL with retry logic.
+        Uses curl_cffi (better Cloudflare bypass) if available, otherwise cloudscraper.
 
         Args:
             url (str, optional): The URL to make the request to. If not provided, the class's URL
                 attribute will be used.
+            max_retries (int): Maximum number of retries for 403/429 errors.
 
         Returns:
             Response: An HTTP Response object containing the server's response to the request.
@@ -41,29 +48,71 @@ class HLTVBase:
             HTTPException: If there are too many redirects, or if the server returns a client or
                 server error status code.
         """
+        import time
+        import random
+
         url = self.URL if not url else url
-        scraper = cloudscraper.create_scraper()
-        try:
-            response: Response= scraper.get(
-                url = url,
-                headers ={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Connection": "keep-alive"
-                },   
-            )
-        except TooManyRedirects:
-            raise HTTPException(status_code = 404, detail= f"Not found for url: {url}")
-        except ConnectionError:
-            raise HTTPException(status_code= 500, detail= f"Connection error for url: {url}")
-        except Exception as e:
-            raise HTTPException(status_code = 500, detail=f"Error for url: {url}. {e}")
-        if 400 <= response.status_code < 500:
-            raise HTTPException(
-                status_code=response.status_code,
-                detail = f"Client Error. {response.reason} for url: {url}"
-            )
-        return response
+
+        # Browser impersonation options for curl_cffi
+        impersonate_browsers = ["chrome120", "chrome119", "chrome110", "safari17_0"]
+
+        last_exception = None
+        for attempt in range(max_retries):
+            try:
+                if USE_CURL_CFFI:
+                    # Use curl_cffi with browser impersonation (best for Cloudflare)
+                    browser = random.choice(impersonate_browsers)
+                    response = curl_requests.get(
+                        url,
+                        impersonate=browser,
+                        timeout=30,
+                    )
+                else:
+                    # Fallback to cloudscraper
+                    scraper = cloudscraper.create_scraper(
+                        browser={
+                            'browser': 'chrome',
+                            'platform': 'windows',
+                            'desktop': True,
+                        }
+                    )
+                    response = scraper.get(
+                        url=url,
+                        headers={
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                            "Accept-Language": "en-US,en;q=0.9",
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                            "Connection": "keep-alive",
+                        },
+                    )
+
+                # Check for rate limiting or Cloudflare block
+                if response.status_code in (403, 429, 503):
+                    wait_time = (2 ** attempt) + random.uniform(2, 5)
+                    time.sleep(wait_time)
+                    continue
+
+                if 400 <= response.status_code < 500:
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"Client Error. {response.status_code} for url: {url}"
+                    )
+
+                return response
+
+            except HTTPException:
+                raise
+            except Exception as e:
+                error_str = str(e).lower()
+                if "redirect" in error_str:
+                    raise HTTPException(status_code=404, detail=f"Not found for url: {url}")
+                last_exception = HTTPException(status_code=500, detail=f"Error for url: {url}. {e}")
+                wait_time = (2 ** attempt) + random.uniform(2, 5)
+                time.sleep(wait_time)
+
+        if last_exception:
+            raise last_exception
+        raise HTTPException(status_code=500, detail=f"Max retries exceeded for url: {url}")
     
     def request_url_bsoup(self) -> BeautifulSoup:
         """

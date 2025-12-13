@@ -36,7 +36,7 @@ $ open http://localhost:8000/
 # Clone the repository:
 $ git clone https://github.com/eupeutro/hltv-api.git
 
-# Navigate to the project folder:
+# Navigate to the project folder:W
 $ cd hltv-api
 
 # Build the Docker image:

@@ -166,6 +166,117 @@ class Events:
         PRIZE = "//div[@class = 'team' and .//a[contains(@href,'/team/{team_id}/')]]/following-sibling::div[@class='prize']/text()"
         PRIZE_CLUB_SHARE = "//div[@class = 'team' and .//a[contains(@href,'/team/{team_id}/')]]/following-sibling::div[@class='prize club-share']/text()"
         TEAM_PLACEMENT  = "//div[@class = 'team' and .//a[contains(@href,'/team/{team_id}/')]]/following-sibling::div[not(@class)]/text()"
-        
 
-    
+
+class Matches:
+    """XPath selectors for match data scraping."""
+
+    class ResultsPage:
+        """Selectors for the /results listing page."""
+        # Date-grouped sections
+        DATE_SECTIONS = "//div[@class='results-sublist']"
+        DATE_HEADLINE = ".//span[contains(@class,'standard-headline')]/text()"
+
+        # Match containers within sections
+        MATCH_CONTAINERS = ".//div[contains(@class,'result-con')]"
+        MATCH_LINK = ".//a[@class='a-reset']/@href"
+
+        # Team info from results listing
+        TEAM1_NAME = ".//div[@class='team'][1]/text()"
+        TEAM2_NAME = ".//div[@class='team'][2]/text()"
+
+        # Score from results listing
+        TEAM1_SCORE = ".//td[contains(@class,'result-score')]//span[1]/text()"
+        TEAM2_SCORE = ".//td[contains(@class,'result-score')]//span[2]/text()"
+
+        # Event and format
+        EVENT_NAME = ".//span[@class='event-name']/text()"
+        MATCH_FORMAT = ".//div[@class='map-text']/text()"
+
+        # Pagination
+        PAGINATION_NEXT = "//a[contains(@class,'pagination-next')]/@href"
+
+    class MatchPage:
+        """Selectors for individual match page metadata."""
+        # Team 1 info
+        TEAM1_NAME = "//div[contains(@class,'team1-gradient')]//div[@class='teamName']/text()"
+        TEAM1_LINK = "//div[contains(@class,'team1-gradient')]//a/@href"
+        TEAM1_LOGO = "//div[contains(@class,'team1-gradient')]//img[contains(@class,'logo')]/@src"
+        TEAM1_SCORE_WON = "//div[contains(@class,'team1-gradient')]//div[@class='won']/text()"
+        TEAM1_SCORE_LOST = "//div[contains(@class,'team1-gradient')]//div[@class='lost']/text()"
+
+        # Team 2 info
+        TEAM2_NAME = "//div[contains(@class,'team2-gradient')]//div[@class='teamName']/text()"
+        TEAM2_LINK = "//div[contains(@class,'team2-gradient')]//a/@href"
+        TEAM2_LOGO = "//div[contains(@class,'team2-gradient')]//img[contains(@class,'logo')]/@src"
+        TEAM2_SCORE_WON = "//div[contains(@class,'team2-gradient')]//div[@class='won']/text()"
+        TEAM2_SCORE_LOST = "//div[contains(@class,'team2-gradient')]//div[@class='lost']/text()"
+
+        # Event info
+        EVENT_LINK = "//a[@class='event']/@href"
+        EVENT_NAME = "//a[@class='event']//div[contains(@class,'event-name')]/text()"
+
+        # Date/time (data-unix is timestamp in milliseconds)
+        DATE = "//div[@class='timeAndEvent']//div[@class='date']/text()"
+        TIME_UNIX = "//div[@class='timeAndEvent']//div[@class='time']/@data-unix"
+
+        # Match format (e.g., "Best of 3 (LAN)")
+        MATCH_FORMAT = "//div[contains(@class,'preformatted-text')]/text()"
+
+        # Map holders container
+        MAP_HOLDERS = "//div[@class='mapholder']"
+
+    class MapResults:
+        """Selectors for map results (use relative to map holder element)."""
+        MAP_NAME = ".//div[@class='mapname']/text()"
+
+        # Team 1 map score (in results-team-score div, results-left is a div)
+        TEAM1_SCORE = ".//div[contains(@class,'results-left')]//div[@class='results-team-score']/text()"
+        TEAM1_CT_SCORE = ".//div[@class='results-center-half-score']//span[@class='ct'][1]/text()"
+        TEAM1_T_SCORE = ".//div[@class='results-center-half-score']//span[@class='t'][1]/text()"
+
+        # Team 2 map score (results-right is a span element)
+        TEAM2_SCORE = ".//*[contains(@class,'results-right')]//div[@class='results-team-score']/text()"
+        TEAM2_CT_SCORE = ".//div[@class='results-center-half-score']//span[@class='ct'][2]/text()"
+        TEAM2_T_SCORE = ".//div[@class='results-center-half-score']//span[@class='t'][2]/text()"
+
+        # Winner determination (class contains 'won')
+        TEAM1_WON = ".//div[contains(@class,'results-left') and contains(@class,'won')]"
+        TEAM2_WON = ".//*[contains(@class,'results-right') and contains(@class,'won')]"
+
+    class PlayerStats:
+        """Selectors for player statistics tables."""
+        # Stats tables (one per team, for all maps combined)
+        STATS_TABLES = "//table[contains(@class,'totalstats')]"
+
+        # Header row for team identification
+        HEADER_ROW = ".//tr[@class='header-row']"
+        TEAM_NAME = ".//td[@class='players']//a[@class='teamName team']/text()"
+        TEAM_LINK = ".//td[@class='players']//a[@class='teamName team']/@href"
+        TEAM_LOGO = ".//td[@class='players']//img[@class='logo']/@src"
+
+        # Player rows (all tr except header)
+        PLAYER_ROWS = ".//tr[not(@class='header-row')]"
+
+        # Player info (relative to player row)
+        PLAYER_LINK = ".//td[@class='players']//a/@href"
+        PLAYER_NICK = ".//td[@class='players']//span[@class='player-nick']/text()"
+        PLAYER_FULL_NAME = ".//td[@class='players']//div[@class='gtSmartphone-only statsPlayerName text-ellipsis']/text()"
+        PLAYER_FLAG = ".//td[@class='players']//img[@class='flag']/@title"
+        PLAYER_FLAG_URL = ".//td[@class='players']//img[@class='flag']/@src"
+
+        # Stats cells (relative to player row)
+        KD = ".//td[contains(@class,'kd') and contains(@class,'traditional-data')]/text()"
+        KD_ECO = ".//td[contains(@class,'kd') and contains(@class,'eco-adjusted-data')]/text()"
+        SWING = ".//td[@class='roundSwing text-center']/text()"
+        ADR = ".//td[contains(@class,'adr') and contains(@class,'traditional-data')]/text()"
+        ADR_ECO = ".//td[contains(@class,'adr') and contains(@class,'eco-adjusted-data')]/text()"
+        KAST = ".//td[contains(@class,'kast') and contains(@class,'traditional-data')]/text()"
+        KAST_ECO = ".//td[contains(@class,'kast') and contains(@class,'eco-adjusted-data')]/text()"
+        RATING = ".//td[contains(@class,'rating')]/text()"
+
+    class Veto:
+        """Selectors for veto/pick-ban information."""
+        VETO_BOX = "//div[@class='veto-box']"
+        VETO_LINES = ".//div[contains(@class,'padding')]/text()"
+
