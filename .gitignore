@@ -1,3 +1,21 @@
 __pycache__/
 *.py[cod]
 hltv-API/
+
+# Data directories
+data/
+data-export/
+
+# Environment files
+.env
+.env.local
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

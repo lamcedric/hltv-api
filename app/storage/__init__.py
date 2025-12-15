@@ -1,4 +1,4 @@
 from .base import StorageBackend
-from .csv_storage import CSVStorage
+from .postgres_storage import PostgresStorage
 
-__all__ = ["StorageBackend", "CSVStorage"]
+__all__ = ["StorageBackend", "PostgresStorage"]

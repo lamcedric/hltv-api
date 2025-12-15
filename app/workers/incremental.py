@@ -1,18 +1,14 @@
 """
 Incremental match scraper for updating with new matches.
 """
-import json
 import logging
 import time
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Optional, List, Dict, Any, Set
 
 from app.services.matches.details import HLTVMatchDetails
 from app.services.matches.results import HLTVMatchResults
 from app.storage.base import StorageBackend
-from app.storage.csv_storage import CSVStorage
 
 # Configure logging
 logging.basicConfig(
@@ -174,48 +170,3 @@ class IncrementalScraper:
         return summary
 
 
-def run_incremental_update(
-    data_dir: str = "./data",
-    delay: float = 2.0,
-    lookback_days: int = 7,
-) -> Dict[str, Any]:
-    """
-    Run an incremental update.
-
-    Args:
-        data_dir: Directory for CSV storage
-        delay: Delay between requests
-        lookback_days: Days to look back
-
-    Returns:
-        dict: Update summary
-    """
-    storage = CSVStorage(data_dir=data_dir)
-    scraper = IncrementalScraper(
-        storage=storage,
-        delay_seconds=delay,
-        lookback_days=lookback_days,
-    )
-    return scraper.update()
-
-
-def main():
-    """Main entry point for incremental scraper."""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="HLTV Incremental Match Scraper")
-    parser.add_argument("--data-dir", default="./data", help="Data directory")
-    parser.add_argument("--delay", type=float, default=2.0, help="Delay between requests")
-    parser.add_argument("--lookback-days", type=int, default=7, help="Days to look back")
-    args = parser.parse_args()
-
-    result = run_incremental_update(
-        data_dir=args.data_dir,
-        delay=args.delay,
-        lookback_days=args.lookback_days,
-    )
-    print(json.dumps(result, indent=2))
-
-
-if __name__ == "__main__":
-    main()

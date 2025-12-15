@@ -1,52 +1,5 @@
 services:
-  # API Service - FastAPI web server
-  api:
-    build: .
-    container_name: hltv-api
-    ports:
-      - "8000:8000"
-    environment:
-      - STORAGE_BACKEND=csv
-      - CSV_OUTPUT_DIR=/data
-      - RATE_LIMITING_ENABLE=false
-      - PYTHONPATH=/app
-    volumes:
-      - hltv-data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-  # Historical Scraper - Full backfill of all HLTV matches
-  # Scrapes from most recent to oldest (2024 first, then earlier years)
-  historical-scraper:
-    build: .
-    container_name: hltv-historical-scraper
-    command: >
-      python -m app.workers.scraper
-      --start-date ${SCRAPE_START_DATE:-2024-01-01}
-      --end-date ${SCRAPE_END_DATE:-2025-12-31}
-      --output-dir /data
-      --delay ${SCRAPER_DELAY:-3.0}
-      --batch-size ${SCRAPER_BATCH_SIZE:-25}
-    environment:
-      - STORAGE_BACKEND=csv
-      - CSV_OUTPUT_DIR=/data
-      - SCRAPER_DELAY_SECONDS=${SCRAPER_DELAY:-3.0}
-      - SCRAPER_BATCH_SIZE=${SCRAPER_BATCH_SIZE:-25}
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - hltv-data:/data
-    restart: on-failure:5
-    depends_on:
-      api:
-        condition: service_healthy
-
-  # PostgreSQL Database (optional, for production use)
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: hltv-postgres
@@ -57,49 +10,34 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-    profiles:
-      - postgres
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hltv"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # API Service - FastAPI web server
+  api:
+    build: .
+    container_name: hltv-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://hltv:hltv_password@postgres:5432/hltv
+      - RATE_LIMITING_ENABLE=false
+      - PYTHONPATH=/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 volumes:
-  hltv-data:
-    driver: local
   pgdata:
     driver: local
-
-# Usage:
-#
-# Start API + Historical Scraper (default: 2024-present):
-#   docker-compose up -d
-#
-# Start with custom date range (full historical backfill):
-#   SCRAPE_START_DATE=2015-01-01 SCRAPE_END_DATE=2024-12-31 docker-compose up -d
-#
-# Scrape specific year:
-#   SCRAPE_START_DATE=2023-01-01 SCRAPE_END_DATE=2023-12-31 docker-compose up -d
-#
-# Adjust scraping speed (higher delay = slower but more reliable):
-#   SCRAPER_DELAY=5.0 docker-compose up -d
-#
-# View scraper progress:
-#   docker-compose logs -f historical-scraper
-#
-# Start API only:
-#   docker-compose up -d api
-#
-# Stop all:
-#   docker-compose down
-#
-# View data files:
-#   docker-compose exec api ls -la /data
-#
-# Check scraped match count:
-#   docker-compose exec api wc -l /data/matches.csv
-#
-# Copy data to host:
-#   docker cp hltv-api:/data ./data-export

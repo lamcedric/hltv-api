@@ -86,14 +86,11 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
-    def export_to_csv(self, output_dir: str) -> Dict[str, str]:
+    def get_statistics(self) -> Dict[str, Any]:
         """
-        Export all data to CSV files.
-
-        Args:
-            output_dir: Directory to write CSV files
+        Get storage statistics.
 
         Returns:
-            dict: Mapping of data type to file path
+            dict: Storage statistics including counts and metadata
         """
         pass

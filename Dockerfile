@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -6,11 +6,18 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Poetry
+RUN pip install poetry
+
+# Copy Poetry files
+COPY pyproject.toml poetry.lock* ./
+
+# Install dependencies (no dev dependencies, no virtualenv in container)
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-dev 2>/dev/null || poetry install --no-interaction --no-ansi
 
 # Copy application code
 COPY . /app
@@ -18,9 +25,6 @@ COPY . /app
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-
-# Create data directory for CSV storage
-RUN mkdir -p /data
 
 # Expose port
 EXPOSE 8000
